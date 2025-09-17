@@ -4,12 +4,6 @@ require 'pg'
 require 'singleton'
 require 'json'
 
-# Data types
-Release = Struct.new(:id, :name)
-Project = Struct.new(:id, :name)
-ReportInfo = Struct.new(:id, :name)
-Changelist = Struct.new(:value)
-
 class DcPgConn
     include Singleton
 
@@ -183,58 +177,6 @@ class DcPgConn
                 end
             end
         end
-    end
-
-    # Class functions for queries
-
-    def get_release_id(release_name)
-        result = select_first("SELECT release_id FROM release WHERE release_name = $1", release_name)
-        result ? result.first.to_i : nil
-    end
-
-    def get_report_info(release_id, report_name)
-        query = <<~QUERY
-            SELECT cmr.id, p.project_name FROM rel.coverage_merge_reports cmr
-            INNER JOIN project p ON p.project_id = cmr.project_ref
-            INNER JOIN info.merge_reports mr ON mr.id = cmr.merge_report_ref
-            WHERE release_ref = $1 AND mr.name = $2
-        QUERY
-        result = select_first(query, release_id, report_name)
-        result ? ReportInfo.new(result[0].to_i, result[1]) : nil
-    end
-
-    def get_all_projects
-        query = "SELECT project_id, project_name FROM project"
-        results = select_all_raw(query)
-        results ? results.map { |row| Project.new(row["project_id"].to_i, row["project_name"]) } : []
-    end
-
-    def get_all_releases
-        query = "SELECT release_id, release_name FROM release"
-        results = select_all_raw(query)
-        results ? results.map { |row| Release.new(row["release_id"].to_i, row["release_name"]) } : []
-    end
-
-    def get_reports_for_release(release_id)
-        query = <<~QUERY
-            SELECT cmr.id, mr.name FROM rel.coverage_merge_reports cmr
-            INNER JOIN info.merge_reports mr ON mr.id = cmr.merge_report_ref
-            WHERE cmr.release_ref = $1
-        QUERY
-        results = select_all_raw(query, release_id)
-        results ? results.map { |row| ReportInfo.new(row["id"].to_i, row["name"]) } : []
-    end
-
-    def get_changelists_for_report(report_id, report_type)
-        table_name = report_type == "individual" ? "code_coverage_merge_individuals" : "code_coverage_merge_accumulates"
-        column_name = report_type == "individual" ? "changelist" : "end_changelist"
-        query = <<~QUERY
-            SELECT DISTINCT #{column_name} AS changelist FROM #{table_name}
-            WHERE coverage_merge_report_ref = $1
-            ORDER BY #{column_name} DESC
-        QUERY
-        results = select_all_raw(query, report_id)
-        results ? results.map { |row| Changelist.new(row["changelist"]) } : []
     end
 end
 
