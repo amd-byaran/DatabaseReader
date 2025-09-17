@@ -435,6 +435,54 @@ public static class DcPgConn
     }
 
     /// <summary>
+    /// Gets all reports for a given release name with comprehensive information.
+    /// Returns detailed information about each report including IDs, project name, and report name.
+    ///
+    /// Parameters:
+    /// - releaseName: Name of the release (e.g., "dcn6_0")
+    ///
+    /// Returns:
+    /// - List of tuples containing: (releaseId, reportId, projectName, reportName)
+    /// - Empty list: If release is not found or has no reports
+    ///
+    /// Queries performed:
+    /// 1. Get release ID from release name
+    /// 2. Get all reports for that release with project information
+    /// </summary>
+    public static List<(int releaseId, int reportId, string projectName, string reportName)> GetAllReportsForRelease(string releaseName)
+    {
+        var result = new List<(int releaseId, int reportId, string projectName, string reportName)>();
+        
+        // First get the release ID from release name
+        var releaseResult = SelectFirst("SELECT release_id FROM release WHERE release_name = $1", releaseName);
+        if (releaseResult == null) return result; // Empty list if release not found
+        
+        int releaseId = Convert.ToInt32(releaseResult[0]);
+        
+        // Query to get all reports for this release with project information
+        string query = @"
+            SELECT cmr.id, p.project_name, mr.name FROM rel.coverage_merge_reports cmr
+            INNER JOIN project p ON p.project_id = cmr.project_ref
+            INNER JOIN info.merge_reports mr ON mr.id = cmr.merge_report_ref
+            WHERE cmr.release_ref = $1
+            ORDER BY cmr.id DESC";
+        
+        var results = SelectAll(query, releaseId);
+        if (results == null) return result; // Empty list if query fails
+        
+        foreach (var row in results)
+        {
+            int reportId = Convert.ToInt32(row[0]);
+            string projectName = (string)row[1];
+            string reportName = (string)row[2];
+            
+            result.Add((releaseId, reportId, projectName, reportName));
+        }
+        
+        return result;
+    }
+
+    /// <summary>
     /// Retrieves all projects from the database, sorted by creation time (ID DESC as proxy).
     /// Optionally limits the number of results for performance.
     ///
