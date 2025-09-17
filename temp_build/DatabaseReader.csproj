@@ -5,10 +5,17 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Npgsql" Version="8.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Program.cs" />
+    <Compile Remove="DLL_Usage_Example.cs" />
   </ItemGroup>
 
 </Project>

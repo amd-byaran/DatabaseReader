@@ -2,15 +2,18 @@ using System;
 using System.Collections.Generic;
 
 /// <summary>
-/// DLL-based test program to display all reports for release "dcn6_0" with coverage type "code_cov"
+/// DLL-based test program to test multiple DatabaseReader methods:
+/// - GetAllReportsForRelease for release "dcn6_0" with coverage type "code_cov"
+/// - GetReportInfo for release "dcn6_0" with coverage type "code_cov"
+/// - GetAllReleases to get all active releases
 /// This program directly references the DatabaseReader.dll
 /// </summary>
 class Program
 {
     static void Main()
     {
-        Console.WriteLine("🧪 DLL-Based Test: GetAllReportsForRelease for release 'dcn6_0' with covType 'code_cov'");
-        Console.WriteLine("==================================================================================");
+        Console.WriteLine("🧪 DLL-Based Test Suite: Multiple DatabaseReader Methods");
+        Console.WriteLine("=========================================================");
         Console.WriteLine();
 
         try
@@ -88,6 +91,38 @@ class Program
             else
             {
                 Console.WriteLine("❌ GetReportInfo returned null - no report found for the specified criteria");
+            }
+
+            // Test GetAllReleases method
+            Console.WriteLine();
+            Console.WriteLine("🔍 Testing GetAllReleases method...");
+
+            var allReleases = DcPgConn.GetAllReleases();
+
+            if (allReleases != null && allReleases.Count > 0)
+            {
+                Console.WriteLine($"✅ GetAllReleases successful: Found {allReleases.Count} active releases");
+                Console.WriteLine();
+                Console.WriteLine("📋 Active Releases:");
+                Console.WriteLine("┌─────┬─────────────────────┐");
+                Console.WriteLine("│  #  │ Release Name       │");
+                Console.WriteLine("├─────┼─────────────────────┤");
+
+                int releaseCount = 1;
+                foreach (var release in allReleases)
+                {
+                    string releaseName = release.ReleaseName.Length > 19 ? release.ReleaseName.Substring(0, 16) + "..." : release.ReleaseName.PadRight(19);
+                    Console.WriteLine($"│ {releaseCount.ToString().PadLeft(3)} │ {releaseName} │");
+                    releaseCount++;
+                }
+
+                Console.WriteLine("└─────┴─────────────────────┘");
+                Console.WriteLine();
+                Console.WriteLine($"📊 Summary: {allReleases.Count} active releases found");
+            }
+            else
+            {
+                Console.WriteLine("❌ GetAllReleases returned null or empty - no active releases found");
             }
 
             // Show detailed information for first report

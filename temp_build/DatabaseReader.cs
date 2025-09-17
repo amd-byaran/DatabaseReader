@@ -485,6 +485,53 @@ public static class DcPgConn
         
         return result;
     }
+    /// <summary>
+    /// Retrieves all reports for a specific release with coverage type filtering.
+    /// Returns reports with project information, filtered by the specified coverage type.
+    ///
+    /// Parameters:
+    /// - releaseId: The ID of the release to get reports for
+    /// - covType: Coverage type filter ("code_cov" or "func_cov")
+    ///
+    /// Returns:
+    /// - List<(int releaseId, int reportId, string projectName, string reportName)>: 
+    ///   All reports for the specified release and coverage type
+    ///
+    /// Notes:
+    /// - Maps covType to database cov_type_ref values: code_cov=1, func_cov=2
+    /// - Returns empty list if no reports found or query fails
+    /// - Queries performed:
+    ///   1. Get all reports for the release with project information
+    ///   2. Filter by coverage type using mr.cov_type_ref
+    /// </summary>
+    public static List<(int releaseId, int reportId, string projectName, string reportName)> GetAllReportsForRelease(int releaseId, string covType)
+    {
+        var result = new List<(int releaseId, int reportId, string projectName, string reportName)>();
+
+        int CoverageType = covType == "code_cov" ? 1 : 2; // 1 for code_cov, 2 for func_cov
+
+        // Query to get all reports for this release with project information, filtered by coverage type
+        string query = @"
+            SELECT cmr.id, p.project_name, mr.name FROM rel.coverage_merge_reports cmr
+            INNER JOIN project p ON p.project_id = cmr.project_ref
+            INNER JOIN info.merge_reports mr ON mr.id = cmr.merge_report_ref and mr.cov_type_ref = $2
+            WHERE cmr.release_ref = $1
+            ORDER BY cmr.id DESC";
+
+        var results = SelectAll(query, releaseId, CoverageType);
+        if (results == null) return result; // Empty list if query fails
+
+        foreach (var row in results)
+        {
+            int reportId = Convert.ToInt32(row[0]);
+            string projectName = (string)row[1];
+            string reportName = (string)row[2];
+
+            result.Add((releaseId, reportId, projectName, reportName));
+        }
+
+        return result;
+    }
 
     /// <summary>
     /// Retrieves all projects from the database, sorted by creation time (ID DESC as proxy).
@@ -532,7 +579,7 @@ public static class DcPgConn
     public static List<Release> GetAllReleases(int? limit = null)
     {
         // Note: Replace 'release_id DESC' with 'created_at DESC' if your table has a creation timestamp column
-        string query = "SELECT release_id, release_name FROM release ORDER BY release_id DESC";
+        string query = "SELECT release_id, release_name FROM release WHERE active = true ORDER BY release_id DESC";
         if (limit.HasValue)
         {
             query += " LIMIT $1";
@@ -589,7 +636,7 @@ public static class DcPgConn
     /// - If database has 'created_at' columns, can add to ORDER BY clause
     /// - Returns empty list if no changelists found or query fails
     /// </summary>
-    public static List<string> GetChangelistsForReport(int reportId, string reportType, int? limit = null)
+    public static List<string?> GetChangelistsForReport(int reportId, string reportType, int? limit = null)
     {
         string tableName = reportType == "individual" ? "code_coverage_merge_individuals" : "code_coverage_merge_accumulates";
         string columnName = reportType == "individual" ? "changelist" : "end_changelist";
@@ -604,8 +651,8 @@ public static class DcPgConn
             query += " LIMIT $2";
         }
         var results = SelectAll(query, limit.HasValue ? new object[] { reportId, limit.Value } : new object[] { reportId });
-        if (results == null) return new List<string>();
-        return results.Select(row => row[0].ToString()).ToList();
+        if (results == null) return new List<string?>();
+        return results.Select(row => row[0]?.ToString()).ToList();
     }
 
     /// <summary>
