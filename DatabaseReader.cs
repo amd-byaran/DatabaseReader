@@ -399,6 +399,42 @@ public static class DcPgConn
     }
 
     /// <summary>
+    /// Gets the release report ID and project name for a given release ID and report name.
+    /// This method directly corresponds to the Ruby code query for getting report information.
+    ///
+    /// Parameters:
+    /// - releaseId: The ID of the release
+    /// - reportName: Name of the report (e.g., "dcn_core_verif_plan")
+    ///
+    /// Returns:
+    /// - Tuple containing: (releaseReportId, projectName)
+    /// - null: If report is not found for the given release
+    ///
+    /// Query performed:
+    /// SELECT cmr.id, p.project_name FROM rel.coverage_merge_reports cmr
+    /// INNER JOIN project p ON p.project_id = cmr.project_ref
+    /// INNER JOIN info.merge_reports mr ON mr.id = cmr.merge_report_ref
+    /// WHERE release_ref = $1 AND mr.name = $2
+    /// </summary>
+    public static (int releaseReportId, string projectName)? GetReleaseReportInfo(int releaseId, string reportName)
+    {
+        string query = @"
+            SELECT cmr.id, p.project_name FROM rel.coverage_merge_reports cmr
+            INNER JOIN project p ON p.project_id = cmr.project_ref
+            INNER JOIN info.merge_reports mr ON mr.id = cmr.merge_report_ref
+            WHERE release_ref = $1 AND mr.name = $2
+        ";
+
+        var result = SelectFirst(query, releaseId, reportName);
+        if (result == null) return null;
+        
+        int releaseReportId = Convert.ToInt32(result[0]);
+        string projectName = (string)result[1];
+
+        return (releaseReportId, projectName);
+    }
+
+    /// <summary>
     /// Retrieves all projects from the database, sorted by creation time (ID DESC as proxy).
     /// Optionally limits the number of results for performance.
     ///
@@ -544,7 +580,7 @@ public static class DcPgConn
     /// - Path points to symlinked report directory in the coverage system
     /// - Default file is "dashboard.html" but can be customized
     /// </summary>
-    public static string GetReportPath(string projectName, string releaseName, string covType, string reportName, string reportType, string changelist, string fileName = "dashboard.html")
+    public static string GetReportPath(string projectName, string releaseName, string covType, string reportName, string reportType, string changelist, string fileName = "")
     {
         string path = Path.Combine("/proj/videoip/web/merged_reports/", projectName, releaseName, covType, reportName, reportType, changelist, fileName);
         return path.Replace("\\", "/");
