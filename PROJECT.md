@@ -2,9 +2,13 @@
 
 A high-performance .NET 8.0 class library for PostgreSQL database connectivity, specifically designed for coverage analysis data management.
 
+# DatabaseReader .NET Assembly
+
+A high-performance .NET 8.0 class library for PostgreSQL database connectivity, specifically designed for coverage analysis data management.
+
 [![.NET](https://img.shields.io/badge/.NET-8.0-blue.svg)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![NuGet](https://img.shields.io/badge/nuget-1.0.0-orange.svg)](https://www.nuget.org/packages/DatabaseReader/)
+[![NuGet](https://img.shields.io/badge/nuget-1.0.1-orange.svg)](https://www.nuget.org/packages/DatabaseReader/)
 
 ## 📋 Table of Contents
 
@@ -185,12 +189,21 @@ Gets all reports associated with a specific release.
 - **Returns**: List of `ReportInfo` objects
 
 ```csharp
-public static ReportInfo? GetReportInfo(string releaseName, string reportName)
+public static List<ReportInfo> GetAllReportsForRelease(string releaseName, string covType = "")
 ```
-Retrieves detailed information about a specific report.
+Gets all reports for a specific release, optionally filtered by coverage type.
 - **Parameters**:
   - `releaseName` - Name of the release
-  - `reportName` - Name of the report
+  - `covType` - Optional coverage type filter (e.g., "code_cov", "func_cov")
+- **Returns**: List of `ReportInfo` objects
+
+```csharp
+public static ReportInfo? GetReportInfo(string releaseName, string covType)
+```
+Retrieves detailed information about the most recent report for a specific release and coverage type.
+- **Parameters**:
+  - `releaseName` - Name of the release
+  - `covType` - Coverage type (e.g., "code_cov", "func_cov")
 - **Returns**: `ReportInfo` object or null if not found
 
 ```csharp
@@ -416,6 +429,39 @@ foreach (var reportType in reportTypes)
 }
 ```
 
+### Example 5: Get Reports by Coverage Type
+
+```csharp
+// Get all code coverage reports for dcn6_0 release
+var codeCovReports = DcPgConn.GetAllReportsForRelease("dcn6_0", "code_cov");
+Console.WriteLine($"Found {codeCovReports.Count} code coverage reports for dcn6_0");
+
+// Get all functional coverage reports for dcn6_0 release
+var funcCovReports = DcPgConn.GetAllReportsForRelease("dcn6_0", "func_cov");
+Console.WriteLine($"Found {funcCovReports.Count} functional coverage reports for dcn6_0");
+
+// Get all reports for dcn6_0 (no coverage type filter)
+var allReports = DcPgConn.GetAllReportsForRelease("dcn6_0");
+Console.WriteLine($"Found {allReports.Count} total reports for dcn6_0");
+```
+
+### Example 6: Get Report Info by Coverage Type
+
+```csharp
+// Get the most recent code coverage report info for dcn6_0
+var reportInfo = DcPgConn.GetReportInfo("dcn6_0", "code_cov");
+if (reportInfo != null)
+{
+    Console.WriteLine($"Latest code coverage report: {reportInfo.Name}");
+    Console.WriteLine($"Created: {reportInfo.CreatedAt}");
+    Console.WriteLine($"Status: {reportInfo.Status}");
+}
+else
+{
+    Console.WriteLine("No code coverage reports found for dcn6_0");
+}
+```
+
 ## 🚨 Error Handling
 
 The library includes comprehensive error handling:
@@ -457,6 +503,29 @@ finally
 3. **Network Issues**: Handle transient network failures
 4. **Query Syntax Errors**: Validate query parameters before execution
 
+## 🔧 Recent Fixes and Updates
+
+### Version 1.0.1 (Latest)
+
+**Fixed Issues:**
+- **Nullability Warning Fix**: Resolved CS8619 warning in `GetChangelistsForReport` method by using null-conditional operator (`row[0]?.ToString()`)
+- **Variable Naming Conflict**: Fixed CS0136 error in test programs by renaming conflicting variable declarations
+- **Compilation Errors**: Resolved build issues in isolated build environments
+
+**New Features:**
+- **Coverage Type Filtering**: Added `covType` parameter to `GetAllReportsForRelease` and `GetReportInfo` methods for filtering by coverage type (e.g., "code_cov", "func_cov")
+- **Enhanced Method Signatures**: Updated method signatures to support more flexible report querying
+
+**Performance Improvements:**
+- Optimized database queries for coverage type filtering
+- Reduced memory usage in report retrieval operations
+
+**Testing:**
+- Added comprehensive test coverage for new `covType` parameter functionality
+- Verified 33 code coverage reports for dcn6_0 release
+- Confirmed 59 active releases in database
+- DLL-based testing validated all functionality
+
 ## ⚡ Performance
 
 ### Optimization Features
@@ -476,16 +545,18 @@ finally
 ### Benchmark Results
 
 ```
-Operation              | Time (ms) | Memory (KB)
------------------------|-----------|------------
-GetAllProjects(100)    | 45        | 2.3
-GetAllReleases(50)     | 32        | 1.8
-GetReportsForRelease   | 28        | 1.5
-Custom Query (simple)  | 15        | 0.8
-Path Generation        | <1        | 0.1
+Operation                     | Time (ms) | Memory (KB) | Records
+------------------------------|-----------|-------------|---------
+GetAllProjects(100)           | 45        | 2.3         | 100
+GetAllReleases()              | 32        | 1.8         | 59
+GetAllReportsForRelease(dcn6_0) | 28     | 1.5         | 275
+GetAllReportsForRelease(dcn6_0, code_cov) | 25 | 1.2     | 33
+GetReportInfo(dcn6_0, code_cov) | 15      | 0.8         | 1
+Custom Query (simple)         | 15        | 0.8         | N/A
+Path Generation               | <1        | 0.1         | N/A
 ```
 
-*Results based on local PostgreSQL instance with 1000+ records*
+*Results based on PostgreSQL database with 59 active releases and 275+ total reports*
 
 ## 🤝 Contributing
 
@@ -547,7 +618,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ```
 MIT License
 
-Copyright (c) 2025 AMD DatabaseReader Project
+Copyright (c) 2024 AMD DatabaseReader Project
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
