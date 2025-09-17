@@ -178,6 +178,22 @@ class DcPgConn
             end
         end
     end
+
+    # Get report information for a specific release and report name
+    # Returns [releaseReportId, projectName] or [nil, nil] if not found
+    def get_report_info(release_id, report_name)
+        query = <<~QUERY
+            SELECT cmr.id, p.project_name FROM rel.coverage_merge_reports cmr
+            INNER JOIN project p ON p.project_id = cmr.project_ref
+            INNER JOIN info.merge_reports mr ON mr.id = cmr.merge_report_ref
+            WHERE release_ref = $1 AND mr.name = $2
+        QUERY
+        
+        result = select_first(query, release_id, report_name)
+        return [nil, nil] if result.nil?
+        
+        [result[0], result[1]]
+    end
 end
 
 
@@ -194,14 +210,7 @@ releaseId, = DcPgConn.instance.select_first("SELECT release_id FROM release WHER
 puts "Release ID for '#{releaseName}': #{releaseId}"
 
 # Get the ID of the report for this release (also get project name)
-query = <<~QUERY
-    SELECT cmr.id, p.project_name FROM rel.coverage_merge_reports cmr
-    INNER JOIN project p ON p.project_id = cmr.project_ref
-    INNER JOIN info.merge_reports mr ON mr.id = cmr.merge_report_ref
-    WHERE release_ref = $1 AND mr.name = $2
-QUERY
-
-releaseReportId, projectName = DcPgConn.instance.select_first(query, releaseId, reportName)
+releaseReportId, projectName = DcPgConn.instance.get_report_info(releaseId, reportName)
 
 puts "Report ID for '#{reportName}': #{releaseReportId}"
 
